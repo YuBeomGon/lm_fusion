@@ -36,8 +36,10 @@ PYTHONPATH=. python scripts/run_eval.py --config configs/poc.yaml --lm-cond hone
 
 ## 결과
 
-honest 조건 POC (120 test, `whisper-large-v3`)에서 α=0.1 적용 시
-**도메인 용어 recall +6.8%p, CER 동시 개선(−0.018), 환각 0** — 상세는
-[`docs/poc_results_honest_v1.md`](docs/poc_results_honest_v1.md).
+turbo full POC (424 test, `whisper-large-v3-turbo`) honest 조건에서 alpha=0.15 적용 시
+**도메인 용어 recall +9.0%p, CER -0.0185, WER 개선, 반복/환각 0** — 상세는
+[`docs/poc_results_turbo_v2.md`](docs/poc_results_turbo_v2.md).
+
+이전 v1 결과는 [`docs/poc_results_honest_v1.md`](docs/poc_results_honest_v1.md)에 보관한다.
 
 > 주의: 학습/평가 데이터와 그 파생물(코퍼스·LM·전사)은 저장소에 포함하지 않는다 (`.gitignore: data/`).
