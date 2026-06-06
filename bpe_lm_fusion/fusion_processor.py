@@ -1,12 +1,14 @@
-# bpe_lm_fusion/fusion_processor.py
-"""LogitsProcessor: BPE-LM shallow fusion.
+"""
+bpe_lm_fusion/fusion_processor.py
+LogitsProcessor: BPE-LM shallow fusion.
 
 HF beam search는 logits processor 호출 전에 log_softmax를 적용하므로 `scores`는
 이미 log-prob다. 따라서 추가 정규화 없이 더하기만 한다:
     scores[tok] += alpha * lm_logprob_ln
 - 우리 프로세서는 기본 프로세서(SuppressTokens/ForceTokens/no-timestamps) 뒤에 실행된다.
   이미 -inf로 죽은 토큰은 건드리지 않고, special/timestamp 토큰(skip_ids)도 건너뛴다.
-- mode=topk       -> ASR 상위 k 후보에만 LM 가산 (가이드 v2 방식 A)
+- mode=topk       -> ASR 상위 k 후보에만 LM 가산 (과거 POC 재현용)
+- mode=topk_strict -> ASR 상위 k 밖 후보는 -inf로 막고 k 안에서만 LM 재랭킹
 - mode=full_vocab -> 전체 vocab에 LM 가산 (첫 token rescue/ceiling 진단; 느림 -> --limit 전용)
 """
 from __future__ import annotations
@@ -25,6 +27,10 @@ class BpeKenlmFusionProcessor(LogitsProcessor):
         self.asr_topk = asr_topk
         self.skip_ids = skip_ids   # special + timestamp ids: LM 미적용 & history 제외
         self.mode = mode
+        if self.mode not in {"topk", "topk_strict", "full_vocab"}:
+            raise ValueError(f"Unsupported fusion mode: {self.mode}")
+        if self.asr_topk <= 0:
+            raise ValueError("asr_topk must be positive")
 
     def _history(self, row_ids: torch.Tensor) -> list[int]:
         return [int(t) for t in row_ids.tolist() if int(t) not in self.skip_ids]
@@ -40,9 +46,13 @@ class BpeKenlmFusionProcessor(LogitsProcessor):
                 cand_idx = list(range(vocab))
                 cand_val = scores[b].tolist()
             else:
-                vals, idx = torch.topk(scores[b], self.asr_topk)
+                vals, idx = torch.topk(scores[b], min(self.asr_topk, vocab))
                 cand_idx = idx.tolist()
                 cand_val = vals.tolist()
+                if self.mode == "topk_strict":
+                    mask = torch.ones(vocab, device=scores.device, dtype=torch.bool)
+                    mask[idx] = False
+                    scores[b].masked_fill_(mask, _NEG_INF)
             keep_idx, keep_add = [], []
             for tok, v in zip(cand_idx, cand_val):
                 if tok in self.skip_ids:          # special/timestamp -> no LM

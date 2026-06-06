@@ -1,5 +1,6 @@
-# bpe_lm_fusion/data.py
-"""Load ASR dataset splits. See docs/dataset_description.md.
+"""
+bpe_lm_fusion/data.py
+Load ASR dataset splits. See docs/dataset_description.md.
 
 KenLM corpus는 train(+옵션 test) TEXT만 사용. 평가는 test audio+text.
 audio는 raw float 리스트이므로 np.float32 변환 후 feature extractor에 투입.
@@ -20,3 +21,9 @@ def split_texts(ds, split: str) -> list[str]:
 
 def audio_to_array(row) -> np.ndarray:
     return np.asarray(row["audio"], dtype=np.float32)
+
+
+def audio_duration_seconds(row) -> float:
+    """Return audio duration from row audio length and sampling rate."""
+    sr = int(row["sampling_rate"])
+    return len(row["audio"]) / sr if sr else 0.0

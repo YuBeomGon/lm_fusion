@@ -5,7 +5,7 @@
 이 문서는 `../CTranslate2` 로컬 저장소의 현재 코드 구조를 기준으로 작성했다.
 
 ```text
-CT2 repo   : /data/MyProject/stt/aig_mvp/CTranslate2
+CT2 repo   : ../CTranslate2
 CT2 branch : feature/kenlm-bpe-fusion
 CT2 remote : https://github.com/YuBeomGon/CTranslate2
 ```
@@ -25,6 +25,14 @@ Whisper token id 1234 -> KenLM word "t1234"
 ```
 
 1차 구현은 `top-k only` fusion이다. 즉, ASR top-k 후보 안에서만 KenLM 점수를 더해 재정렬한다.
+
+### 1.1 구현 전 선행 확인
+
+- HF POC 결과는 `mode=topk`, `asr_topk=50`, `beam=5`, `n_best=5` 기준이다.
+- 현재 HF `topk` 구현은 ASR top-k 후보에만 LM 점수를 더하는 근사이며, full-vocab shallow fusion의 정확한 등가가 아니다.
+- domain-term metric은 longest-match/공백 무시 정책으로 변경됐으므로, 기존 결과 문서의 recall/precision 숫자는 최신 코드로 재측정해야 한다.
+- `max_audio_seconds=30` 초과 샘플은 평가에서 제외하거나 segment 단위 reference와 맞춰야 한다. 현재 POC 코드는 제외 정책을 적용한다.
+- CT2 이식 착수 게이트는 최신 metric과 동일한 audio 길이 정책으로 다시 산출한 HF 결과를 기준으로 한다.
 
 ## 2. 비목표
 

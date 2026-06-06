@@ -12,8 +12,14 @@ kenlm:
 
 fusion:
   alpha_grid: [0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.6]   # 촘촘한 α 곡선 (sweet spot + 붕괴구간)
-  asr_topk: 50
-  mode: topk                  # topk | full_vocab
+  asr_topk: 50                # mode=topk/topk_strict일 때 beam row별 ASR 상위 token 수
+  mode: topk_strict           # topk_strict | topk | full_vocab. topk는 과거 POC 재현용 근사.
+
+decode:
+  device: cuda
+  dtype: float16
+  num_beams: 5
+  n_best: 5
 
 augmentation:                 # POC 미사용 placeholder (추후 설계)
   bpe_dropout_p: 0.1
@@ -23,7 +29,7 @@ augmentation:                 # POC 미사용 placeholder (추후 설계)
 paths:
   data_dir: ./data
 domain_terms_file: ./configs/domain_terms.txt
-max_audio_seconds: 30
+max_audio_seconds: 30         # 0 또는 null이면 길이 필터 비활성화
 
 # Whisper 무음/짧은 발화에서 흔한 환각 문구 (substring 매칭).
 # 보험상담 정상 전사엔 안 나올 distinctive 문구만. "감사합니다" 단독은 오탐 위험 → 제외.

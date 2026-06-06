@@ -5,3 +5,4 @@ __pycache__/
 *.binary
 .pytest_cache/
 logs/
+*.local.yaml

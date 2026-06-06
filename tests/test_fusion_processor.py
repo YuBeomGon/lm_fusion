@@ -37,6 +37,19 @@ def test_topk_keeps_neg_inf_masked():
     out = proc(input_ids, scores.clone())
     assert out[0, 7] == float("-inf")     # stays dead despite LM favoring it
 
+def test_topk_strict_masks_non_topk_tokens():
+    proc = BpeKenlmFusionProcessor(
+        scorer=FakeScorer(), alpha=1.0, asr_topk=2,
+        skip_ids=set(), mode="topk_strict")
+    input_ids = torch.tensor([[5, 6]])
+    scores = torch.full((1, 10), -5.0)
+    scores[0, 8] = -0.5
+    scores[0, 9] = -0.6
+    out = proc(input_ids, scores.clone())
+    assert out[0, 7] == float("-inf")
+    assert out[0, 8] != float("-inf")
+    assert out[0, 9] != float("-inf")
+
 def test_full_vocab_boosts_lm_favored_token():
     proc = BpeKenlmFusionProcessor(
         scorer=FakeScorer(), alpha=1.0, asr_topk=3,

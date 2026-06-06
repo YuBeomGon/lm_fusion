@@ -1,5 +1,7 @@
-# bpe_lm_fusion/decode.py
-"""Whisper decoding with optional BPE-LM fusion. Returns 1-best + n-best."""
+"""
+bpe_lm_fusion/decode.py
+Whisper decoding with optional BPE-LM fusion. Returns 1-best + n-best.
+"""
 from __future__ import annotations
 import torch
 from transformers import (WhisperForConditionalGeneration, WhisperProcessor,
@@ -8,11 +10,29 @@ from .fusion_processor import BpeKenlmFusionProcessor
 from .data import audio_to_array
 
 
+def _resolve_dtype(dtype):
+    if isinstance(dtype, torch.dtype):
+        return dtype
+    dtype_map = {
+        "float16": torch.float16,
+        "fp16": torch.float16,
+        "bfloat16": torch.bfloat16,
+        "bf16": torch.bfloat16,
+        "float32": torch.float32,
+        "fp32": torch.float32,
+    }
+    try:
+        return dtype_map[str(dtype).lower()]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported torch dtype: {dtype}") from exc
+
+
 class FusionDecoder:
     def __init__(self, model_name: str, language: str, task: str,
-                 device: str = "cuda", dtype: torch.dtype = torch.float16):
+                 device: str = "cuda", dtype="float16"):
         # fp16 by default: standard for Whisper inference and fits the 16GB GPU
         # even when other processes hold VRAM. Pass dtype=torch.float32 to override.
+        dtype = _resolve_dtype(dtype)
         self.processor = WhisperProcessor.from_pretrained(model_name)
         self.model = WhisperForConditionalGeneration.from_pretrained(
             model_name, torch_dtype=dtype).to(device)

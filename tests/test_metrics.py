@@ -12,9 +12,19 @@ def test_cer_one_sub():
 
 def test_term_recall():
     refs = ["보장개시일 이후", "후유장해 발생"]
-    hyps = ["보장개시일 이후", "후유 장해 발생"]   # 두번째는 띄어써서 미일치
+    hyps = ["보장개시일 이후", "후유 장해 발생"]   # 공백 차이는 동일 용어로 처리
     r = term_recall_precision(refs, hyps, ["보장개시일", "후유장해"])
-    assert abs(r["recall"] - 0.5) < 1e-9
+    assert r["recall"] == 1.0
+
+def test_term_recall_uses_longest_non_overlapping_match():
+    refs = ["보험금지급사유 안내"]
+    hyps = ["보험금 안내"]
+    r = term_recall_precision(refs, hyps, ["보험금지급사유", "보험금"])
+    assert r["ref_total"] == 1
+    assert r["hyp_total"] == 1
+    assert r["matched"] == 0
+    assert r["recall"] == 0.0
+    assert r["precision"] == 0.0
 
 def test_insertion_rate_zero():
     assert insertion_rate(["가 나 다"], ["가 나 다"]) == 0.0

@@ -1,5 +1,7 @@
-# bpe_lm_fusion/metrics.py
-"""Eval metrics. CER/WER via jiwer; domain-term recall/precision; insertion."""
+"""
+bpe_lm_fusion/metrics.py
+Eval metrics. CER/WER via jiwer; domain-term recall/precision; insertion.
+"""
 from __future__ import annotations
 import jiwer
 
@@ -12,12 +14,51 @@ def wer(refs: list[str], hyps: list[str]) -> float:
     return jiwer.wer(refs, hyps)
 
 
-def term_recall_precision(refs, hyps, terms) -> dict:
-    """Occurrence-level: recall = matched/ref_total, precision = matched/hyp_total."""
+def _compact_spaces(text: str) -> str:
+    return "".join(str(text).split())
+
+
+def _unique_terms(terms, ignore_space: bool) -> list[str]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for term in terms:
+        key = _compact_spaces(term) if ignore_space else str(term)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        unique.append(key)
+    return sorted(unique, key=len, reverse=True)
+
+
+def _longest_match_counts(text: str, terms, ignore_space: bool = True) -> dict[str, int]:
+    """Count non-overlapping term occurrences, preferring longer nested terms."""
+    haystack = _compact_spaces(text) if ignore_space else str(text)
+    occupied = [False] * len(haystack)
+    counts: dict[str, int] = {}
+    for term in _unique_terms(terms, ignore_space):
+        start = 0
+        term_len = len(term)
+        while term_len and start < len(haystack):
+            pos = haystack.find(term, start)
+            if pos < 0:
+                break
+            end = pos + term_len
+            if not any(occupied[pos:end]):
+                for i in range(pos, end):
+                    occupied[i] = True
+                counts[term] = counts.get(term, 0) + 1
+            start = pos + 1
+    return counts
+
+
+def term_recall_precision(refs, hyps, terms, ignore_space: bool = True) -> dict:
+    """Occurrence-level metric with longest-match, non-overlapping term counts."""
     ref_total = hyp_total = matched = 0
     for ref, hyp in zip(refs, hyps):
-        for term in terms:
-            rc, hc = ref.count(term), hyp.count(term)
+        ref_counts = _longest_match_counts(ref, terms, ignore_space=ignore_space)
+        hyp_counts = _longest_match_counts(hyp, terms, ignore_space=ignore_space)
+        for term in set(ref_counts) | set(hyp_counts):
+            rc, hc = ref_counts.get(term, 0), hyp_counts.get(term, 0)
             ref_total += rc
             hyp_total += hc
             matched += min(rc, hc)

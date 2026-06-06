@@ -1,0 +1,8 @@
+datasets
+jiwer
+kenlm
+numpy
+pytest
+PyYAML
+torch
+transformers
