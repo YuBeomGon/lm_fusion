@@ -1,0 +1,36 @@
+model_name: openai/whisper-large-v3
+language: korean
+task: transcribe
+dataset_path: /path/to/hf_dataset
+train_split: train
+test_split: validation     # validation을 test로 사용 (dataset_description.md §2)
+
+kenlm:
+  order: 5
+  bin_dir: /tmp/kenlm/build/bin
+  lmplz_extra: "--discount_fallback"   # 소규모 코퍼스 필수
+
+fusion:
+  alpha_grid: [0.0, 0.1, 0.2]   # POC 핵심 3점 (full grid는 honest 효과 확인 후)
+  asr_topk: 50
+  mode: topk                  # topk | full_vocab
+
+augmentation:                 # POC 미사용 placeholder (추후 설계)
+  bpe_dropout_p: 0.1
+  samples_per_sentence: 2
+  domain_term_samples: 4
+
+paths:
+  data_dir: ./data
+domain_terms_file: ./configs/domain_terms.txt
+max_audio_seconds: 30
+
+# Whisper 무음/짧은 발화에서 흔한 환각 문구 (substring 매칭).
+# 보험상담 정상 전사엔 안 나올 distinctive 문구만. "감사합니다" 단독은 오탐 위험 → 제외.
+hallucination_phrases:
+  - 시청해주셔서 감사합니다
+  - 구독과 좋아요
+  - 다음 영상에서
+  - 한글자막
+  - 우리말샘
+  - MBC 뉴스

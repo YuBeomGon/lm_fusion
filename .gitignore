@@ -1,0 +1,7 @@
+data/
+__pycache__/
+*.pyc
+*.arpa
+*.binary
+.pytest_cache/
+logs/
