@@ -36,9 +36,11 @@ PYTHONPATH=. python scripts/run_eval.py --config configs/poc.yaml --lm-cond hone
 
 ## 결과
 
-honest 조건 POC (120 test, `whisper-large-v3`)에서 α=0.1 적용 시
-**도메인 용어 recall +6.8%p, CER 동시 개선(−0.018), 환각 0** — 상세는
-[`docs/poc_results_honest_v1.md`](docs/poc_results_honest_v1.md).
+turbo full POC (424 test, `whisper-large-v3-turbo`) honest 조건에서 alpha=0.15 적용 시
+**도메인 용어 recall +9.0%p, CER -0.0185, WER 개선, 반복/환각 0** — 상세는
+[`docs/poc_results_turbo_v2.md`](docs/poc_results_turbo_v2.md).
+
+이전 v1 결과는 [`docs/poc_results_honest_v1.md`](docs/poc_results_honest_v1.md)에 보관한다.
 
 > 주의: 현재 코드는 domain-term metric을 longest-match/공백 무시 정책으로 고쳤다.
 > 기존 POC 결과 문서의 term recall/precision 수치는 이전 단순 substring metric 기준이므로,
