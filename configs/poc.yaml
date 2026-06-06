@@ -1,4 +1,4 @@
-model_name: openai/whisper-large-v3
+model_name: openai/whisper-large-v3-turbo
 language: korean
 task: transcribe
 dataset_path: /path/to/hf_dataset
@@ -11,7 +11,7 @@ kenlm:
   lmplz_extra: "--discount_fallback"   # 소규모 코퍼스 필수
 
 fusion:
-  alpha_grid: [0.0, 0.1, 0.2]   # POC 핵심 3점 (full grid는 honest 효과 확인 후)
+  alpha_grid: [0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.6]   # 촘촘한 α 곡선 (sweet spot + 붕괴구간)
   asr_topk: 50
   mode: topk                  # topk | full_vocab
 

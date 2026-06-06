@@ -46,3 +46,29 @@ def test_full_vocab_boosts_lm_favored_token():
     out = proc(input_ids, scores.clone())
     # full_vocab: 모든 토큰에 LM 가산. 7만 lm=0(나머지 -10) -> 7이 최댓값
     assert int(out[0].argmax()) == 7
+
+
+class GradedScorer:
+    """토큰마다 다른 LM 값(-0.1*tok) -> 인덱스 오류를 잡아냄."""
+    def state_from_history(self, ids): return tuple(ids)
+    def token_logprob(self, state, tok): return -0.1 * tok
+
+def test_vectorized_matches_elementwise_reference():
+    """벡터화 index_add 결과 == 기존 element-wise 가산(수치 동일)."""
+    alpha, topk, skip = 0.3, 4, {0}
+    proc = BpeKenlmFusionProcessor(GradedScorer(), alpha, topk, skip, "topk")
+    torch.manual_seed(0)
+    scores = torch.randn(3, 12)
+    inp = torch.tensor([[0, 5, 6], [0, 7, 8], [0, 9, 1]])
+    out = proc(inp, scores.clone())
+    # 참조 구현: beam별 topk 후보에 element-wise 가산
+    ref = scores.clone()
+    sc = GradedScorer()
+    for b in range(3):
+        hist = [int(t) for t in inp[b].tolist() if int(t) not in skip]
+        state = sc.state_from_history(hist)
+        for tok in torch.topk(scores[b], topk).indices.tolist():
+            if tok in skip or ref[b, tok] == float("-inf"):
+                continue
+            ref[b, tok] = ref[b, tok] + alpha * sc.token_logprob(state, tok)
+    assert torch.allclose(out, ref, atol=1e-6)

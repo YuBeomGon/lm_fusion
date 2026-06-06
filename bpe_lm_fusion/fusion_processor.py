@@ -35,16 +35,28 @@ class BpeKenlmFusionProcessor(LogitsProcessor):
         n_beam, vocab = scores.shape
         for b in range(n_beam):
             state = self.scorer.state_from_history(self._history(input_ids[b]))
+            # 후보 인덱스+점수를 한 번에 CPU로 (개별 GPU 읽기 회피)
             if self.mode == "full_vocab":
-                cand = range(vocab)
+                cand_idx = list(range(vocab))
+                cand_val = scores[b].tolist()
             else:
-                cand = torch.topk(scores[b], self.asr_topk).indices.tolist()
-            for tok in cand:
-                tok = int(tok)
+                vals, idx = torch.topk(scores[b], self.asr_topk)
+                cand_idx = idx.tolist()
+                cand_val = vals.tolist()
+            keep_idx, keep_add = [], []
+            for tok, v in zip(cand_idx, cand_val):
                 if tok in self.skip_ids:          # special/timestamp -> no LM
                     continue
-                if scores[b, tok] == _NEG_INF:    # suppressed/forced-out -> keep dead
+                if v == _NEG_INF:                 # suppressed/forced-out -> keep dead
                     continue
                 lm_lp = self.scorer.token_logprob(state, tok)
-                scores[b, tok] = scores[b, tok] + self.alpha * lm_lp
+                keep_idx.append(tok)
+                keep_add.append(self.alpha * lm_lp)
+            # beam당 단일 벡터화 연산으로 가산 (개별 GPU 스칼라 쓰기 회피)
+            if keep_idx:
+                idx_t = torch.as_tensor(keep_idx, device=scores.device,
+                                        dtype=torch.long)
+                add_t = torch.as_tensor(keep_add, device=scores.device,
+                                        dtype=scores.dtype)
+                scores[b].index_add_(0, idx_t, add_t)
         return scores

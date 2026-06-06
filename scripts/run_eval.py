@@ -36,15 +36,21 @@ def main():
     refs = [normalize_text(r["text"]) for r in test]
     out_path = os.path.join(cfg["paths"]["data_dir"], f"results_{args.lm_cond}.jsonl")
     with open(out_path, "w") as fout:
+        n_total = len(test)
         for alpha in cfg["fusion"]["alpha_grid"]:
+            print(f"[{args.lm_cond}] alpha={alpha} start ({n_total} samples)",
+                  flush=True)
             hyps, nbests = [], []
-            for row in test:
+            for i, row in enumerate(test, 1):
                 res = dec.transcribe(
                     row, scorer=scorer, alpha=alpha,
                     asr_topk=cfg["fusion"]["asr_topk"], mode=cfg["fusion"]["mode"],
                     num_beams=5, n_best=5)
                 hyps.append(normalize_text(res["best"]))
                 nbests.append([normalize_text(t) for t in res["nbest"]])
+                if i % 50 == 0 or i == n_total:
+                    print(f"[{args.lm_cond}] alpha={alpha} {i}/{n_total}",
+                          flush=True)
             rec = {
                 "lm_cond": args.lm_cond, "alpha": alpha,
                 "cer": metrics.cer(refs, hyps), "wer": metrics.wer(refs, hyps),
